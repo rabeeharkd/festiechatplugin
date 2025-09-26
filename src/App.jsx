@@ -1,8 +1,10 @@
+import React from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx'
 import { SidebarProvider, useSidebar } from './contexts/SidebarContext'
 import Sidebar from './components/Sidebar'
 import ConnectionStatus from './components/ConnectionStatus'
+import { runApiTests } from './utils/apiTest'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import Dashboard from './pages/Dashboard'
@@ -17,6 +19,12 @@ import Results from './pages/Results'
 const AppContent = () => {
   const { isOpen } = useSidebar()
   const { user, loading, logout } = useAuth()
+  
+  // Run API connectivity tests on mount
+  React.useEffect(() => {
+    console.log('🧪 Running API tests...');
+    runApiTests();
+  }, []);
   
   // Show loading spinner while checking auth
   if (loading) {
