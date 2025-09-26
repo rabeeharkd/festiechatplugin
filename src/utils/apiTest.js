@@ -89,9 +89,42 @@ export const runApiTests = async () => {
   };
 };
 
+// Quick CORS test function
+export const quickCorsTest = async () => {
+  console.log('⚡ Quick CORS Test...');
+  
+  try {
+    const response = await fetch('https://festiechatplugin-backend-8g96.onrender.com/api/health', {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include'
+    });
+    
+    if (response.status === 0) {
+      console.log('❌ CORS STILL BLOCKED - Backend needs CORS fix');
+      return false;
+    }
+    
+    console.log('✅ CORS WORKING - Status:', response.status);
+    const data = await response.json();
+    console.log('📊 Response:', data);
+    return true;
+  } catch (error) {
+    console.log('❌ CORS Error:', error.message);
+    return false;
+  }
+};
+
 // Make functions available in browser console
 if (typeof window !== 'undefined') {
   window.testApiConnectivity = testApiConnectivity;
   window.testLoginEndpoint = testLoginEndpoint;
   window.runApiTests = runApiTests;
+  window.quickCorsTest = quickCorsTest;
+  
+  // Auto-run quick test on page load
+  setTimeout(() => {
+    console.log('🔧 Auto-running CORS test...');
+    quickCorsTest();
+  }, 2000);
 }
