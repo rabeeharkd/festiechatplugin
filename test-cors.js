@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // Test script to verify CORS is working after backend fix
-const https = require('https');
+import https from 'https';
 
 console.log('🧪 Testing CORS configuration...\n');
 
