@@ -1,5 +1,5 @@
 // Test utility to verify backend connectivity
-const BACKEND_URL = 'https://festiechatplugin-backend.onrender.com/api';
+const BACKEND_URL = import.meta.env.VITE_API_URL || '/api';
 
 export const testBackendConnectivity = async () => {
   console.log('🔍 Testing backend connectivity...');
@@ -10,10 +10,10 @@ export const testBackendConnectivity = async () => {
     const healthResponse = await fetch(`${BACKEND_URL}/health`);
     console.log('Health check status:', healthResponse.status);
     
-    // Test 2: Auth endpoint
-    console.log('Test 2: Auth endpoint test...');
-    const authResponse = await fetch(`${BACKEND_URL}/auth/test`);
-    console.log('Auth endpoint status:', authResponse.status);
+    // Test 2: Chats endpoint
+    console.log('Test 2: Chats endpoint test...');
+    const authResponse = await fetch(`${BACKEND_URL}/chats`);
+    console.log('Chats endpoint status:', authResponse.status);
     
     // Test 3: Registration endpoint (should return validation error)
     console.log('Test 3: Registration endpoint test...');

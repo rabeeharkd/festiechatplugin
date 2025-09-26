@@ -1,2 +1,2 @@
-// API Base URL for production deployment
-export const API_BASE_URL = "https://festiechatplugin-backend.onrender.com/api";
+// API Base URL - use proxy path in development, full URL in production
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";

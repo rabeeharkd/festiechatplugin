@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx'
 import { SidebarProvider, useSidebar } from './contexts/SidebarContext'
 import Sidebar from './components/Sidebar'
+import ConnectionStatus from './components/ConnectionStatus'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import Dashboard from './pages/Dashboard'
@@ -87,6 +88,7 @@ function App() {
     <Router>
       <AuthProvider>
         <SidebarProvider>
+          <ConnectionStatus />
           <AppContent />
         </SidebarProvider>
       </AuthProvider>

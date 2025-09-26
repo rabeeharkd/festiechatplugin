@@ -1,9 +1,11 @@
 
 import axios from 'axios';
+import { mockAPI, USE_MOCK_API } from '../utils/mockAPI';
 
 // Create axios instance with base configuration
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3002/api',
+  baseURL: API_BASE_URL ? `${API_BASE_URL}/api` : '/api',
   timeout: 15000, // Increased timeout for network reliability
   headers: {
     'Content-Type': 'application/json',
@@ -39,7 +41,7 @@ api.interceptors.response.use(
       if (refreshToken) {
         try {
           const response = await axios.post(
-            'https://festiechatplugin-backend.onrender.com/api/auth/refresh',
+            `${API_BASE_URL}/api/auth/refresh`,
             { refreshToken }
           );
           
@@ -72,7 +74,7 @@ api.interceptors.response.use(
 
 // API endpoints
 export const chatAPI = {
-  getChats: () => api.get('/chats'),
+  getChats: () => USE_MOCK_API ? mockAPI.getChats() : api.get('/chats'),
   getChat: (id) => api.get(`/chats/${id}`),
   createChat: (data) => api.post('/chats', data),
   updateChat: (id, data) => api.put(`/chats/${id}`, data),
@@ -82,12 +84,12 @@ export const chatAPI = {
 };
 
 export const messageAPI = {
-  getMessages: (chatId, params) => api.get(`/messages/${chatId}`, { params }),
-  sendMessage: (chatId, data) => api.post(`/messages/${chatId}`, data),
+  getMessages: (chatId, params) => USE_MOCK_API ? mockAPI.getMessages(chatId, params) : api.get(`/messages/${chatId}`, { params }),
+  sendMessage: (chatId, data) => USE_MOCK_API ? mockAPI.sendMessage(chatId, data) : api.post(`/messages/${chatId}`, data),
   reactToMessage: (messageId, reaction) => api.post(`/messages/${messageId}/react`, { reaction }),
   forwardMessage: (messageId, data) => api.post(`/messages/${messageId}/forward`, data),
   markMessagesRead: (chatId, messageIds) => api.put(`/messages/${chatId}/read`, { messageIds }),
-  deleteMessage: (messageId) => api.delete(`/messages/${messageId}`),
+  deleteMessage: (messageId) => USE_MOCK_API ? mockAPI.deleteMessage(messageId) : api.delete(`/messages/${messageId}`),
   searchMessages: (chatId, query) => api.get(`/messages/${chatId}/search/${query}`),
 };
 

@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
-import { Send, Search, Users, Clock, Check, CheckCheck, Mic, Paperclip, Smile, MoreVertical, Trash2, Forward, Copy, X, File, Image, Download } from 'lucide-react';
+import { Send, Search, Users, Clock, Check, CheckCheck, Mic, Paperclip, Smile, MoreVertical, Trash2, Forward, Copy, X, File, Image, Download, Plus } from 'lucide-react';
 import { chatAPI, messageAPI } from '../services/api';
 import socketService from '../services/socket';
 import { useAuth } from '../contexts/AuthContext';
+import { USE_MOCK_API } from '../utils/mockAPI';
+import { addNewChats } from '../utils/addChats';
 
 // Utility function to check if user is admin
 const isAdminUser = (user) => {
@@ -148,6 +150,7 @@ const Messages = () => {
   const [showForwardModal, setShowForwardModal] = useState(false);
   const [activeUserCount, setActiveUserCount] = useState(0);
   const [isUserAdmin, setIsUserAdmin] = useState(false);
+  const [addingChats, setAddingChats] = useState(false);
   
   // Refs
   const messagesEndRef = useRef(null);
@@ -203,7 +206,11 @@ const Messages = () => {
         }));
         
         // Filter chats based on user role
+        console.log('Debug - Current user:', user);
+        console.log('Debug - User email:', user?.email);
+        console.log('Debug - User role:', user?.role);
         const adminStatus = isAdminUser(user);
+        console.log('Debug - Admin status:', adminStatus);
         setIsUserAdmin(adminStatus);
         
         let filteredChats;
@@ -598,6 +605,31 @@ const Messages = () => {
     }
   };
 
+  // Handler to add new chats
+  const handleAddNewChats = async () => {
+    if (addingChats) return; // Prevent double-clicks
+    
+    try {
+      setAddingChats(true);
+      console.log('🚀 Adding new chats...');
+      
+      const result = await addNewChats();
+      
+      if (result) {
+        console.log('✅ Successfully added chats:', result);
+        alert(`Successfully added 1 group chat and ${result.dmChats.length} DM chats!`);
+        
+        // Reload chats to show the new ones
+        await loadChats();
+      }
+    } catch (error) {
+      console.error('❌ Error adding chats:', error);
+      alert('Failed to add chats. Please try again.');
+    } finally {
+      setAddingChats(false);
+    }
+  };
+
   // Filter chats based on search
   const filteredChats = useMemo(() => {
     if (!searchTerm.trim()) return chats;
@@ -673,11 +705,23 @@ const Messages = () => {
   // Main render
   return (
     <div className="flex h-full bg-white rounded-lg shadow-sm overflow-hidden">
+      {/* API Mode Indicator */}
+      {USE_MOCK_API && (
+        <div className="absolute top-2 right-2 bg-yellow-100 border border-yellow-400 text-yellow-800 px-2 py-1 rounded text-xs z-50">
+          Demo Mode: Mock Chat Data
+        </div>
+      )}
+      {!USE_MOCK_API && (
+        <div className="absolute top-2 right-2 bg-blue-100 border border-blue-400 text-blue-800 px-2 py-1 rounded text-xs z-50">
+          Live Mode: Database Connected
+        </div>
+      )}
+      
       {/* Chat List */}
       <div className="w-1/3 border-r border-gray-200 flex flex-col">
         {/* Search */}
         <div className="p-4 border-b border-gray-200">
-          <div className="relative">
+          <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <input
               type="text"
@@ -687,6 +731,22 @@ const Messages = () => {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
           </div>
+          
+          {/* Add Chats Button */}
+          {!USE_MOCK_API && (
+            <button
+              onClick={handleAddNewChats}
+              disabled={addingChats}
+              className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                addingChats
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-green-600 text-white hover:bg-green-700 active:bg-green-800'
+              }`}
+            >
+              <Plus className="h-4 w-4" />
+              {addingChats ? 'Adding Chats...' : 'Add Sample Chats'}
+            </button>
+          )}
         </div>
 
         {/* Chat List */}

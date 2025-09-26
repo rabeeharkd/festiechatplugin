@@ -11,7 +11,8 @@ class SocketService {
       return this.socket;
     }
 
-    this.socket = io('https://festiechatplugin-backend.onrender.com', {
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'https://festiechatplugin-backend-8g96.onrender.com';
+    this.socket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       timeout: 20000,
       forceNew: true

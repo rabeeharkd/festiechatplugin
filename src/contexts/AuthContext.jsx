@@ -6,11 +6,13 @@ import React, {
   useCallback,
 } from "react";
 import axios from "axios";
+import { mockAPI, USE_MOCK_API } from "../utils/mockAPI";
+import dbManager from "../utils/database";
 
 const AuthContext = createContext();
 
-// API Base URL for authentication
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3002/api";
+// In your AuthContext.jsx, update the API base URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -35,7 +37,7 @@ export function AuthProvider({ children }) {
 
         if (storedUser && accessToken) {
           // Verify token is still valid
-          const response = await axios.get(`${API_BASE_URL}/auth/verify`, {
+          const response = await axios.get(`${API_BASE_URL}/api/auth/verify`, {
             headers: { Authorization: `Bearer ${accessToken}` },
           });
 
@@ -71,14 +73,25 @@ export function AuthProvider({ children }) {
     checkAuthStatus();
   }, []);
 
+  // Update your axios configuration
   const login = async (email, password) => {
     try {
-      console.log("Attempting login with backend API...");
+      console.log('Attempting login with backend API...');
+      console.log('API Base URL:', API_BASE_URL);
+      const loginUrl = API_BASE_URL ? `${API_BASE_URL}/api/auth/login` : '/api/auth/login';
+      console.log('Full login URL:', loginUrl);
 
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
-        email: email.trim(),
-        password: password,
-      });
+      let response;
+      
+      if (USE_MOCK_API) {
+        console.log("Using mock API for development");
+        response = await mockAPI.login(email, password);
+      } else {
+        response = await axios.post(loginUrl, {
+          email,
+          password
+        });
+      }
 
       if (response.data.success) {
         const { user, accessToken, refreshToken } = response.data;
@@ -103,11 +116,19 @@ export function AuthProvider({ children }) {
     try {
       console.log("Attempting registration with backend API...");
 
-      const response = await axios.post(`${API_BASE_URL}/auth/register`, {
-        name: name.trim(),
-        email: email.trim(),
-        password: password,
-      });
+      let response;
+      
+      if (USE_MOCK_API) {
+        console.log("Using mock API for development");
+        response = await mockAPI.register(name, email, password);
+      } else {
+        const registerUrl = API_BASE_URL ? `${API_BASE_URL}/api/auth/register` : '/api/auth/register';
+        response = await axios.post(registerUrl, {
+          name: name.trim(),
+          email: email.trim(),
+          password: password,
+        });
+      }
 
       if (response.data.success) {
         const { user, accessToken, refreshToken } = response.data;
