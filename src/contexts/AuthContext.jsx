@@ -5,7 +5,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import axios from "axios";
+import api from "../services/api";
 import { mockAPI, USE_MOCK_API } from "../utils/mockAPI";
 import dbManager from "../utils/database";
 
@@ -37,7 +37,7 @@ export function AuthProvider({ children }) {
 
         if (storedUser && accessToken) {
           // Verify token is still valid
-          const response = await axios.get(`${API_BASE_URL}/api/auth/verify`, {
+          const response = await api.get('/auth/verify', {
             headers: { Authorization: `Bearer ${accessToken}` },
           });
 
@@ -78,8 +78,6 @@ export function AuthProvider({ children }) {
     try {
       console.log('Attempting login with backend API...');
       console.log('API Base URL:', API_BASE_URL);
-      const loginUrl = API_BASE_URL ? `${API_BASE_URL}/api/auth/login` : '/api/auth/login';
-      console.log('Full login URL:', loginUrl);
 
       let response;
       
@@ -87,7 +85,8 @@ export function AuthProvider({ children }) {
         console.log("Using mock API for development");
         response = await mockAPI.login(email, password);
       } else {
-        response = await axios.post(loginUrl, {
+        // Use the configured API instance 
+        response = await api.post('/auth/login', {
           email,
           password
         });
@@ -122,8 +121,7 @@ export function AuthProvider({ children }) {
         console.log("Using mock API for development");
         response = await mockAPI.register(name, email, password);
       } else {
-        const registerUrl = API_BASE_URL ? `${API_BASE_URL}/api/auth/register` : '/api/auth/register';
-        response = await axios.post(registerUrl, {
+        response = await api.post('/auth/register', {
           name: name.trim(),
           email: email.trim(),
           password: password,

@@ -40,6 +40,8 @@ api.interceptors.response.use(
       
       if (refreshToken) {
         try {
+          // Import axios directly for refresh token call to avoid circular dependency
+          const axios = (await import('axios')).default;
           const response = await axios.post(
             `${API_BASE_URL}/api/auth/refresh`,
             { refreshToken }
