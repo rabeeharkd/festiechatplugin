@@ -1,0 +1,87 @@
+/* Simplified Responsive Utilities for Festie Admin Dashboard */
+
+/* Mobile First Approach - Only essential utilities */
+
+/* Mobile specific utilities */
+@media (max-width: 767px) {
+  .mobile-bottom-nav {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    height: 4rem !important;
+    width: 100% !important;
+    flex-direction: row !important;
+    padding: 0.5rem !important;
+    z-index: 1000 !important;
+    border-radius: 0 !important;
+    border-bottom: none !important;
+    border-top: 1px solid #e5e7eb !important;
+  }
+
+  .mobile-nav-item {
+    flex: 1 !important;
+    justify-content: center !important;
+    padding: 0.5rem !important;
+  }
+
+  .mobile-nav-text {
+    font-size: 0.75rem !important;
+    margin-top: 0.25rem !important;
+  }
+
+  .mobile-hide-sidebar {
+    display: none !important;
+  }
+
+  .mobile-main-content {
+    margin-left: 0 !important;
+    margin-bottom: 4rem !important;
+  }
+}
+
+/* Chat mobile specific styles */
+@media (max-width: 767px) {
+  .chat-mobile-layout .chat-list {
+    width: 100% !important;
+  }
+  
+  .chat-mobile-layout .chat-area {
+    width: 100% !important;
+  }
+}
+
+/* Utility classes for consistent responsive behavior */
+.responsive-flex {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.responsive-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .responsive-grid {
+    gap: 1.5rem;
+  }
+}
+
+/* Text responsive utilities */
+.responsive-text {
+  font-size: 0.875rem;
+}
+
+@media (min-width: 640px) {
+  .responsive-text {
+    font-size: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .responsive-text {
+    font-size: 1.125rem;
+  }
+}
