@@ -3,9 +3,14 @@ import axios from 'axios';
 import { mockAPI, USE_MOCK_API } from '../utils/mockAPI';
 
 // Create axios instance with base configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://festiechatplugin-backend-8g96.onrender.com';
+const isDevelopment = import.meta.env.DEV;
+
+console.log('🔗 API Base URL:', API_BASE_URL);
+console.log('🔧 Environment:', isDevelopment ? 'Development' : 'Production');
+
 const api = axios.create({
-  baseURL: API_BASE_URL ? `${API_BASE_URL}/api` : '/api',
+  baseURL: (isDevelopment && !API_BASE_URL) ? '/api' : `${API_BASE_URL}/api`,
   timeout: 15000, // Increased timeout for network reliability
   headers: {
     'Content-Type': 'application/json',
@@ -42,8 +47,9 @@ api.interceptors.response.use(
         try {
           // Import axios directly for refresh token call to avoid circular dependency
           const axios = (await import('axios')).default;
+          const REFRESH_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://festiechatplugin-backend-8g96.onrender.com';
           const response = await axios.post(
-            `${API_BASE_URL}/api/auth/refresh`,
+            `${REFRESH_API_BASE_URL}/api/auth/refresh`,
             { refreshToken }
           );
           

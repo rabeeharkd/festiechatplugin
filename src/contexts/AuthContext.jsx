@@ -12,7 +12,8 @@ import dbManager from "../utils/database";
 const AuthContext = createContext();
 
 // In your AuthContext.jsx, update the API base URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://festiechatplugin-backend-8g96.onrender.com';
+console.log('🔗 AuthContext API Base URL:', API_BASE_URL);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
