@@ -1,6 +1,6 @@
 // Test API connectivity with exact configuration
 export const testApiConnectivity = async () => {
-  console.log('🧪 Testing API connectivity...');
+  console.log('🧪 Testing API connectivity to backend...');
   
   try {
     const response = await fetch('https://festiechatplugin-backend-8g96.onrender.com/api/health', {
