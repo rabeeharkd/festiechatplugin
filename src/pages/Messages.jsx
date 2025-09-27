@@ -213,153 +213,49 @@ const Messages = () => {
           participants: chat.participants || [] // Keep original participants array for filtering
         }));
         
-        // Filter chats based on user role
-        console.log('Debug - Current user:', user);
-        console.log('Debug - User email:', user?.email);
-        console.log('Debug - User role:', user?.role);
-        const adminStatus = isAdminUser(user);
-        console.log('Debug - Admin status:', adminStatus);
-        setIsUserAdmin(adminStatus);
+        // 🎯 OPEN ACCESS POLICY: All authenticated users see ALL chats
+        console.log('🔓 OPEN ACCESS POLICY ACTIVE - All users can see all chats');
+        console.log('User details:', {
+          email: user?.email,
+          role: user?.role,
+          id: user?.id
+        });
+        console.log('Total chats in database:', allChats.length);
         
-        let filteredChats;
-        if (adminStatus) {
-          // Admin sees all chats including all individual admin DMs
-          filteredChats = allChats;
-          console.log('Admin user - showing all chats including all admin DMs:', allChats.length);
-        } else {
-          // Regular users should see all chats they are participants of
-          const currentUserId = user.id || user.email || user.username || user._id;
-          
-          filteredChats = allChats.filter(chat => {
-            // Check if user is a participant in this chat
-            let isParticipant = false;
-            
-            if (Array.isArray(chat.participants)) {
-              isParticipant = chat.participants.some(participant => {
-                // Handle different participant formats
-                if (typeof participant === 'string') {
-                  return participant === currentUserId || 
-                         participant === user.email || 
-                         participant === user.username || 
-                         participant === user._id;
-                } else if (typeof participant === 'object' && participant !== null) {
-                  return participant.id === currentUserId || 
-                         participant._id === currentUserId ||
-                         participant.email === user.email ||
-                         participant.username === user.username;
-                }
-                return false;
-              });
-            }
-            
-            // Also include group chats that don't have explicit participants list
-            const chatNameLower = chat.name?.toLowerCase() || '';
-            const isGeneralGroupChat = chat.type === 'group' && (
-              chatNameLower.includes('general') || 
-              chatNameLower.includes('main') ||
-              chatNameLower.includes('festival') ||
-              chatNameLower.includes('neurofest') ||
-              chat.isPublic === true ||
-              !chat.participants || chat.participants.length === 0 // Public groups without participant restrictions
-            );
-            
-            const shouldInclude = isParticipant || isGeneralGroupChat;
-            
-            // Debug logging for each chat
-            console.log('Chat filtering debug:', {
-              chatName: chat.name,
-              chatType: chat.type,
-              chatId: chat.id,
-              isParticipant,
-              isGeneralGroupChat,
-              shouldInclude,
-              participants: chat.participants,
-              currentUserId: currentUserId,
-              userEmail: user.email
+        // Check admin status for UI features (bulk create, etc.)
+        const adminStatus = isAdminUser(user);
+        setIsUserAdmin(adminStatus);
+        console.log('Admin status (for UI features only):', adminStatus);
+        
+        // 🚀 NO FILTERING - Everyone sees everything!
+        const filteredChats = allChats.map(chat => ({
+          ...chat,
+          canJoin: true, // Everyone can join any chat
+          isAccessible: true, // Mark as accessible for UI
+          accessReason: 'Open Access Policy', // For debugging
+          originalParticipants: chat.participants // Keep original for reference
+        }));
+        
+        console.log('✅ OPEN ACCESS: Showing all chats to user:', filteredChats.length);
+        
+        // Enhanced logging for verification
+        if (filteredChats.length > 0) {
+          console.log('📋 Complete Chat List:');
+          filteredChats.forEach((chat, index) => {
+            console.log(`  ${index + 1}. ${chat.name}`, {
+              type: chat.type,
+              id: chat.id,
+              participantCount: chat.participantCount || chat.participants?.length || 0,
+              canJoin: chat.canJoin,
+              createdBy: chat.createdBy?.email || 'Unknown'
             });
-            
-            return shouldInclude;
           });
-          
-          // Create individual admin DM for this user
-          // Check if an admin DM already exists in the server data
-          const existingAdminDM = allChats.find(chat => 
-            chat.isAdminDM || 
-            (chat.type === 'dm' && chat.name?.toLowerCase() === 'admin') ||
-            (chat.participants && Array.isArray(chat.participants) && 
-             chat.participants.some(p => isAdminUser(p)) &&
-             chat.participants.length === 2)
-          );
-          
-          if (!existingAdminDM) {
-            // Try to create the admin DM in the backend first
-            try {
-              console.log(`Creating admin DM in backend for user: ${user.email}`);
-              
-              const createChatData = {
-                name: 'Admin',
-                type: 'dm',
-                participants: [
-                  currentUserId,
-                  'amjedvnml@gmail.com' // Admin email
-                ],
-                isAdminDM: true,
-                description: 'Direct message with admin'
-              };
-              
-              console.log('Attempting to create admin DM with data:', createChatData);
-              
-              // ✅ This works now - Any logged-in user can create chats  
-              const createResponse = await axios.post('https://festiechatplugin-backend-8g96.onrender.com/api/chats', 
-                createChatData,
-                { headers: { 'Authorization': `Bearer ${userToken}` } }
-              );
-              
-              if (createResponse?.data?.data) {
-                // Use the backend-created chat
-                const backendChat = createResponse.data.data;
-                filteredChats.push({
-                  ...backendChat,
-                  id: backendChat._id || backendChat.id,
-                  participantCount: 2,
-                  participants: createChatData.participants,
-                  isAdminDM: true
-                });
-                console.log(`Successfully created admin DM in backend with ID: ${backendChat._id || backendChat.id}`);
-              } else {
-                throw new Error('Failed to create chat in backend');
-              }
-              
-            } catch (backendError) {
-              console.warn('Failed to create admin DM in backend:', backendError);
-              
-              // For now, don't create a fallback local chat since it causes the ObjectId error
-              // Instead, show an error message to the user
-              console.error('Cannot create admin DM - backend connection required');
-            }
-          }
-          
-          console.log('Regular user - filtered chats:', filteredChats.length);
-          
-          // If no chats found for regular user, ensure they have at least a general chat access
-          if (filteredChats.length === 0 && allChats.length > 0) {
-            console.log('No chats found for user, providing fallback access to first available chat');
-            // Give access to the first group chat or general chat as fallback
-            const fallbackChat = allChats.find(chat => 
-              chat.type === 'group' || 
-              chat.name?.toLowerCase().includes('general') ||
-              chat.name?.toLowerCase().includes('main')
-            ) || allChats[0]; // Use first chat as ultimate fallback
-            
-            if (fallbackChat) {
-              filteredChats = [fallbackChat];
-              console.log('Fallback chat provided:', fallbackChat.name);
-            }
-          }
+        } else {
+          console.log('⚠️ No chats found in database');
         }
         
         setChats(filteredChats);
-        console.log('Chats loaded successfully:', filteredChats.length);
+        console.log('🎉 Chat loading complete - Open Access Policy implemented:', filteredChats.length, 'chats available');
       } else {
         setChats([]);
       }
@@ -395,61 +291,22 @@ const Messages = () => {
           status: msg.status || 'sent'
         }));
         
-        // Filter messages for DM chats if user is not admin
+        // 🔓 OPEN ACCESS POLICY: All users can see all messages in any chat
         const currentChat = chats.find(chat => chat.id === chatId);
         const userIsAdmin = isAdminUser(user);
         
-        console.log('DM Privacy Check:', {
+        console.log('📨 Message Access Check:', {
           chatId,
           chatType: currentChat?.type,
-          isAdminDM: currentChat?.isAdminDM,
           chatName: currentChat?.name,
           userIsAdmin,
           userEmail: user?.email,
-          totalMessages: transformedMessages.length
+          totalMessages: transformedMessages.length,
+          accessPolicy: 'Open Access - No Filtering'
         });
         
-        if (currentChat?.isAdminDM || currentChat?.type === 'dm' || currentChat?.name === 'Admin') {
-          if (!userIsAdmin) {
-            const beforeFiltering = transformedMessages.length;
-            const currentUserId = user.id || user.email || user.username;
-            
-            // Regular users in their admin DM can only see:
-            // 1. Their own messages
-            // 2. Admin messages
-            transformedMessages = transformedMessages.filter(msg => {
-              const isOwnMessage = msg.sender === user?.email || 
-                                 msg.sender === user?.username || 
-                                 msg.sender === user?.name || 
-                                 msg.sender === user?.id ||
-                                 msg.senderId === currentUserId;
-              
-              const isAdminMessage = msg.sender === 'amjedvnml@gmail.com' || 
-                                   isAdminUser({ email: msg.sender }) ||
-                                   msg.sender === 'Admin' ||
-                                   msg.senderRole === 'admin' ||
-                                   msg.senderId === 'admin';
-              
-              const shouldShow = isOwnMessage || isAdminMessage;
-              
-              console.log('DM Message Filter:', {
-                messageId: msg.id,
-                sender: msg.sender,
-                senderId: msg.senderId,
-                content: msg.content.substring(0, 50) + '...',
-                isOwnMessage,
-                isAdminMessage,
-                shouldShow
-              });
-              
-              return shouldShow;
-            });
-            
-            console.log(`DM Privacy: Filtered ${beforeFiltering} messages down to ${transformedMessages.length} for regular user in admin DM`);
-          } else {
-            console.log('Admin user - showing all messages in admin DM:', transformedMessages.length);
-          }
-        }
+        // No message filtering - everyone sees all messages in any chat they access
+        console.log('✅ OPEN ACCESS: All messages visible to user:', transformedMessages.length);
         
         setMessages(transformedMessages);
         console.log('Messages loaded:', transformedMessages.length);
@@ -910,6 +767,13 @@ const Messages = () => {
       <div className="w-1/3 border-r border-gray-200 flex flex-col">
         {/* Search */}
         <div className="p-4 border-b border-gray-200">
+          {/* Open Access Policy Indicator */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-2 mb-3">
+            <p className="text-xs text-green-700 font-medium">
+              🔓 Open Access Policy Active - All chats visible to authenticated users
+            </p>
+          </div>
+          
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <input
@@ -949,7 +813,12 @@ const Messages = () => {
         <div className="flex-1 overflow-y-auto">
           {filteredChats.length === 0 ? (
             <div className="p-4 text-center text-gray-500">
-              {chats.length === 0 ? 'No chats available' : 'No chats match your search'}
+              <div className="mb-2">
+                {chats.length === 0 ? '🔍 No chats in database' : 'No chats match your search'}
+              </div>
+              <div className="text-xs text-gray-400">
+                Open Access Policy: All authenticated users can see all available chats
+              </div>
             </div>
           ) : (
             filteredChats.map((chat) => (
