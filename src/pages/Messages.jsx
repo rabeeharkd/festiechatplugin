@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
-import { Send, Search, Users, Clock, Check, CheckCheck, Mic, Paperclip, Smile, MoreVertical, Trash2, Forward, Copy, X, File, Image, Download, Plus } from 'lucide-react';
+import { Send, Search, Users, Clock, Check, CheckCheck, Mic, Paperclip, Smile, MoreVertical, Trash2, Forward, Copy, X, File, Image, Download } from 'lucide-react';
 import { chatAPI, messageAPI } from '../services/api';
 import socketService from '../services/socket';
 import { useAuth } from '../contexts/AuthContext';
 import { USE_MOCK_API } from '../utils/mockAPI';
-import { addNewChats } from '../utils/addChats';
+
 
 // Utility function to check if user is admin
 const isAdminUser = (user) => {
@@ -150,7 +150,6 @@ const Messages = () => {
   const [showForwardModal, setShowForwardModal] = useState(false);
   const [activeUserCount, setActiveUserCount] = useState(0);
   const [isUserAdmin, setIsUserAdmin] = useState(false);
-  const [addingChats, setAddingChats] = useState(false);
   
   // Refs
   const messagesEndRef = useRef(null);
@@ -606,29 +605,7 @@ const Messages = () => {
   };
 
   // Handler to add new chats
-  const handleAddNewChats = async () => {
-    if (addingChats) return; // Prevent double-clicks
-    
-    try {
-      setAddingChats(true);
-      console.log('🚀 Adding new chats...');
-      
-      const result = await addNewChats();
-      
-      if (result) {
-        console.log('✅ Successfully added chats:', result);
-        alert(`Successfully added 1 group chat and ${result.dmChats.length} DM chats!`);
-        
-        // Reload chats to show the new ones
-        await loadChats();
-      }
-    } catch (error) {
-      console.error('❌ Error adding chats:', error);
-      alert('Failed to add chats. Please try again.');
-    } finally {
-      setAddingChats(false);
-    }
-  };
+
 
   // Filter chats based on search
   const filteredChats = useMemo(() => {
@@ -732,21 +709,7 @@ const Messages = () => {
             />
           </div>
           
-          {/* Add Chats Button */}
-          {!USE_MOCK_API && (
-            <button
-              onClick={handleAddNewChats}
-              disabled={addingChats}
-              className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                addingChats
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-green-600 text-white hover:bg-green-700 active:bg-green-800'
-              }`}
-            >
-              <Plus className="h-4 w-4" />
-              {addingChats ? 'Adding Chats...' : 'Add Sample Chats'}
-            </button>
-          )}
+
         </div>
 
         {/* Chat List */}
