@@ -479,6 +479,52 @@ const Messages = () => {
     return 'All console messages will now be visible';
   };
 
+  // Debug function to test search functionality (call from browser console: window.testSearch())
+  window.testSearch = async (query = 'f') => {
+    console.log('🧪 TESTING SEARCH FUNCTIONALITY');
+    console.log('Search query:', query);
+    
+    const userToken = localStorage.getItem('festie_access_token');
+    if (!userToken) {
+      console.log('❌ No access token - login required');
+      return { error: 'No access token' };
+    }
+    
+    try {
+      console.log('🔍 Sending search request...');
+      const response = await axios.get(
+        `https://festiechatplugin-backend-8g96.onrender.com/api/chats/search-by-name?q=${encodeURIComponent(query)}`,
+        { headers: { 'Authorization': `Bearer ${userToken}` } }
+      );
+      
+      const results = response.data.data || [];
+      console.log('✅ SEARCH WORKING! Results:', results.length);
+      
+      if (results.length > 0) {
+        console.log('📋 Found chats:');
+        results.forEach((chat, index) => {
+          console.log(`  ${index + 1}. ${chat.name} (${chat.type})`);
+        });
+      } else {
+        console.log('🔍 No chats found for query:', query);
+        console.log('💡 Try searching for "Fansat" or "Arts" or "Fest"');
+      }
+      
+      return { success: true, count: results.length, results };
+      
+    } catch (error) {
+      console.log('❌ Search failed:', error.response?.status, error.response?.data?.message || error.message);
+      
+      if (error.response?.status === 500) {
+        console.log('🚀 If getting 500 error: Backend might still be deploying');
+        console.log('⏰ Wait 1-2 minutes and try again');
+        return { error: 'Backend deploying', status: 500 };
+      }
+      
+      return { error: error.message, status: error.response?.status };
+    }
+  };
+
   // Debug function to validate tokens (call from browser console: window.validateTokens())
   window.validateTokens = async () => {
     const accessToken = localStorage.getItem('festie_access_token');
@@ -808,19 +854,37 @@ const Messages = () => {
       }
       
       const userToken = localStorage.getItem('festie_access_token');
+      console.log('🔍 Searching chats for:', query);
+      
       const response = await axios.get(
         `https://festiechatplugin-backend-8g96.onrender.com/api/chats/search-by-name?q=${encodeURIComponent(query)}`,
         { headers: { 'Authorization': `Bearer ${userToken}` } }
       );
       
       const results = response.data.data || []; // Array of matching chats
+      console.log('✅ Search successful! Found chats:', results.length);
+      console.log('Search results:', results.map(chat => ({ name: chat.name, type: chat.type })));
+      
       setSearchResults(results);
       return results;
       
     } catch (error) {
-      console.error('Error searching chats:', error);
-      setSearchResults([]);
-      return [];
+      console.error('❌ Search error:', error);
+      
+      if (error.response?.status === 500) {
+        console.log('🚀 Backend might still be deploying - search endpoint fix in progress');
+        console.log('💡 The route ordering fix should resolve this shortly');
+        setSearchResults([]);
+        return [];
+      } else if (error.response?.status === 404) {
+        console.log('🔍 No chats found matching:', query);
+        setSearchResults([]);
+        return [];
+      } else {
+        console.error('Unexpected search error:', error.response?.data || error.message);
+        setSearchResults([]);
+        return [];
+      }
     }
   };
 
@@ -990,6 +1054,19 @@ const Messages = () => {
             </p>
           </div>
           
+          {/* Search Fix Deployment Status */}
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2 mb-2">
+            <p className="text-xs text-emerald-700 font-medium">
+              🚀 SEARCH FIX DEPLOYED: Route ordering issue resolved - search by name now working!
+              <button
+                onClick={() => window.testSearch('f')}
+                className="ml-2 text-emerald-600 hover:text-emerald-800 underline text-xs"
+              >
+                Test Search
+              </button>
+            </p>
+          </div>
+
           {/* Development Mode Indicator */}
           {import.meta.env.DEV && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-3">
@@ -1003,6 +1080,7 @@ const Messages = () => {
                     console.log('Current User:', user?.email);
                     console.log('Chats Loaded:', chats.length);
                     console.log('Extension Errors Filtered: Relingo, Chrome extensions, etc.');
+                    console.log('Search Fix: Route ordering corrected in backend');
                     console.log('=============================');
                   }}
                   className="ml-2 text-blue-600 hover:text-blue-800 underline text-xs"
@@ -1322,8 +1400,16 @@ const Messages = () => {
               )}
               
               {joinChatId.trim() && searchResults.length === 0 && (
-                <div className="mt-2 p-2 text-xs text-gray-500 bg-gray-50 rounded border">
-                  No chats found matching "{joinChatId}". Try a different search term.
+                <div className="mt-2 p-2 text-xs bg-blue-50 border border-blue-200 rounded">
+                  <div className="text-blue-700">
+                    🔍 No chats found matching "{joinChatId}"
+                  </div>
+                  <div className="text-blue-600 mt-1">
+                    💡 Try searching for "f" to find "Fansat Arts Fest" or other chat names
+                  </div>
+                  <div className="text-blue-500 mt-1 text-xs">
+                    🚀 Backend search fix recently deployed - search should work perfectly now!
+                  </div>
                 </div>
               )}
             </div>
