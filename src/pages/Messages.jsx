@@ -219,12 +219,33 @@ const Messages = () => {
       setLoading(true);
       setError(null);
       
-      // ✅ This works now - Any logged-in user can see all chats
+      // ✅ Authentication Debug & Token Validation
       const userToken = localStorage.getItem('festie_access_token');
-      const response = await axios.get('https://festiechatplugin-backend-8g96.onrender.com/api/chats', {
-        headers: { 'Authorization': `Bearer ${userToken}` }
+      const refreshToken = localStorage.getItem('festie_refresh_token');
+      
+      console.log('🔐 Authentication Debug:', {
+        userEmail: user?.email,
+        hasAccessToken: !!userToken,
+        hasRefreshToken: !!refreshToken,
+        accessTokenLength: userToken?.length,
+        accessTokenPreview: userToken ? `${userToken.substring(0, 20)}...` : 'MISSING',
+        tokenType: typeof userToken
       });
-      console.log('Chat API Response:', response);
+
+      if (!userToken) {
+        console.error('❌ No access token found - user needs to login again');
+        setError('Authentication required. Please login again.');
+        setLoading(false);
+        return;
+      }
+
+      const response = await axios.get('https://festiechatplugin-backend-8g96.onrender.com/api/chats', {
+        headers: { 
+          'Authorization': `Bearer ${userToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('✅ Chat API Response:', response);
       
       // Get active user count
       const userCount = await getActiveUserCount();
@@ -287,7 +308,55 @@ const Messages = () => {
       }
     } catch (err) {
       console.error('Error loading chats:', err);
-      setError('Failed to load chats');
+      
+      // Enhanced error handling for authentication issues
+      if (err.response?.status === 401) {
+        console.error('🚫 401 Unauthorized - Token may be expired or invalid');
+        
+        // Try to refresh token automatically
+        const refreshToken = localStorage.getItem('festie_refresh_token');
+        if (refreshToken) {
+          console.log('🔄 Attempting automatic token refresh...');
+          try {
+            const refreshResponse = await axios.post(
+              'https://festiechatplugin-backend-8g96.onrender.com/api/auth/refresh',
+              { refreshToken }
+            );
+            
+            if (refreshResponse.data.success) {
+              const { accessToken } = refreshResponse.data;
+              localStorage.setItem('festie_access_token', accessToken);
+              console.log('✅ Token refreshed successfully, retrying chat load...');
+              
+              // Retry loading chats with new token
+              setTimeout(() => loadChats(), 1000);
+              return;
+            }
+          } catch (refreshError) {
+            console.error('❌ Token refresh failed:', refreshError);
+          }
+        }
+        
+        // If refresh failed or no refresh token, clear auth and redirect
+        console.log('🔄 Clearing invalid authentication...');
+        localStorage.removeItem('festie_user');
+        localStorage.removeItem('festie_access_token');
+        localStorage.removeItem('festie_refresh_token');
+        setError('Session expired. Please login again.');
+        
+        // Reload page to trigger login
+        setTimeout(() => window.location.reload(), 2000);
+        
+      } else if (err.response?.status === 403) {
+        setError('Access denied. You may not have permission to access chats.');
+      } else if (err.response?.status === 500) {
+        setError('Server error. Please try again later.');
+      } else if (!err.response) {
+        setError('Network error. Please check your internet connection.');
+      } else {
+        setError(`Failed to load chats: ${err.response?.data?.message || err.message}`);
+      }
+      
       setChats([]);
     } finally {
       setLoading(false);
@@ -408,6 +477,59 @@ const Messages = () => {
     console.log('🔍 SHOWING ALL CONSOLE MESSAGES (including extension errors)');
     // This would restore original console methods if we wanted to implement it
     return 'All console messages will now be visible';
+  };
+
+  // Debug function to validate tokens (call from browser console: window.validateTokens())
+  window.validateTokens = async () => {
+    const accessToken = localStorage.getItem('festie_access_token');
+    const refreshToken = localStorage.getItem('festie_refresh_token');
+    const storedUser = localStorage.getItem('festie_user');
+    
+    console.log('=== TOKEN VALIDATION DEBUG ===');
+    console.log('Access Token:', accessToken ? `${accessToken.substring(0, 30)}...` : '❌ MISSING');
+    console.log('Refresh Token:', refreshToken ? `${refreshToken.substring(0, 30)}...` : '❌ MISSING');
+    console.log('Stored User:', storedUser ? JSON.parse(storedUser) : '❌ MISSING');
+    console.log('Context User:', user);
+    
+    if (accessToken) {
+      console.log('🔍 Testing access token with backend...');
+      try {
+        const testResponse = await axios.get(
+          'https://festiechatplugin-backend-8g96.onrender.com/api/chats',
+          { headers: { 'Authorization': `Bearer ${accessToken}` } }
+        );
+        console.log('✅ Access token is VALID - API responded successfully');
+        console.log('Response status:', testResponse.status);
+        console.log('Chats count:', testResponse.data?.data?.length || 0);
+      } catch (error) {
+        console.log('❌ Access token is INVALID - API returned error');
+        console.log('Error status:', error.response?.status);
+        console.log('Error message:', error.response?.data?.message || error.message);
+        
+        if (refreshToken) {
+          console.log('🔄 Testing refresh token...');
+          try {
+            const refreshResponse = await axios.post(
+              'https://festiechatplugin-backend-8g96.onrender.com/api/auth/refresh',
+              { refreshToken }
+            );
+            console.log('✅ Refresh token is VALID - new access token generated');
+            console.log('New token preview:', refreshResponse.data.accessToken?.substring(0, 30) + '...');
+          } catch (refreshError) {
+            console.log('❌ Refresh token is also INVALID');
+            console.log('Refresh error:', refreshError.response?.data?.message || refreshError.message);
+            console.log('💡 Solution: User needs to login again');
+          }
+        }
+      }
+    }
+    
+    console.log('===============================');
+    return {
+      hasTokens: !!accessToken && !!refreshToken,
+      hasUser: !!user,
+      needsLogin: !accessToken || !user
+    };
   };
 
   // Send message function
@@ -798,16 +920,55 @@ const Messages = () => {
 
   // Render error state
   if (error) {
+    const isAuthError = error.includes('Authentication') || error.includes('Session expired') || error.includes('login');
+    
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
-          <button 
-            onClick={loadChats}
-            className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-          >
-            Try Again
-          </button>
+        <div className="text-center max-w-md">
+          <div className={`p-4 rounded-lg border ${isAuthError ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'}`}>
+            <div className="text-4xl mb-3">
+              {isAuthError ? '🔐' : '⚠️'}
+            </div>
+            <p className={`mb-4 font-medium ${isAuthError ? 'text-red-800' : 'text-yellow-800'}`}>
+              {error}
+            </p>
+            
+            {isAuthError ? (
+              <div className="space-y-2">
+                <button 
+                  onClick={() => window.location.href = '/login'}
+                  className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 block w-full"
+                >
+                  Go to Login
+                </button>
+                <button 
+                  onClick={() => window.validateTokens()}
+                  className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 text-sm block w-full"
+                >
+                  Debug Authentication
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <button 
+                  onClick={loadChats}
+                  className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 block w-full"
+                >
+                  Try Again
+                </button>
+                <button 
+                  onClick={() => window.validateTokens()}
+                  className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 text-sm block w-full"
+                >
+                  Check Connection
+                </button>
+              </div>
+            )}
+            
+            <div className="mt-4 text-xs text-gray-600">
+              Check browser console for detailed error information
+            </div>
+          </div>
         </div>
       </div>
     );
