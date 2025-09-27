@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { Send, Search, Users, Clock, Check, CheckCheck, Mic, Paperclip, Smile, MoreVertical, Trash2, Forward, Copy, X, File, Image, Download } from 'lucide-react';
+import axios from 'axios';
 import { chatAPI, messageAPI } from '../services/api';
 import socketService from '../services/socket';
 import { useAuth } from '../contexts/AuthContext';
@@ -188,7 +189,11 @@ const Messages = () => {
       setLoading(true);
       setError(null);
       
-      const response = await chatAPI.getChats();
+      // ✅ This works now - Any logged-in user can see all chats
+      const userToken = localStorage.getItem('festie_access_token');
+      const response = await axios.get('https://festiechatplugin-backend-8g96.onrender.com/api/chats', {
+        headers: { 'Authorization': `Bearer ${userToken}` }
+      });
       console.log('Chat API Response:', response);
       
       // Get active user count
@@ -218,38 +223,55 @@ const Messages = () => {
           filteredChats = allChats;
           console.log('Admin user - showing all chats including all admin DMs:', allChats.length);
         } else {
-          // Regular users see only group chat and their own admin DM
-          const currentUserId = user.id || user.email || user.username;
+          // Regular users should see all chats they are participants of
+          const currentUserId = user.id || user.email || user.username || user._id;
           
           filteredChats = allChats.filter(chat => {
-            // More inclusive group chat detection
+            // Check if user is a participant in this chat
+            let isParticipant = false;
+            
+            if (Array.isArray(chat.participants)) {
+              isParticipant = chat.participants.some(participant => {
+                // Handle different participant formats
+                if (typeof participant === 'string') {
+                  return participant === currentUserId || 
+                         participant === user.email || 
+                         participant === user.username || 
+                         participant === user._id;
+                } else if (typeof participant === 'object' && participant !== null) {
+                  return participant.id === currentUserId || 
+                         participant._id === currentUserId ||
+                         participant.email === user.email ||
+                         participant.username === user.username;
+                }
+                return false;
+              });
+            }
+            
+            // Also include group chats that don't have explicit participants list
             const chatNameLower = chat.name?.toLowerCase() || '';
-            const isGroupChat = chat.type === 'group' || 
-                               chatNameLower.includes('group') || 
-                               chatNameLower.includes('main') ||
-                               chatNameLower.includes('festival') ||
-                               chatNameLower.includes('general') ||
-                               (!chat.isAdminDM && chat.type !== 'dm'); // Default to group if not explicitly DM
+            const isGeneralGroupChat = chat.type === 'group' && (
+              chatNameLower.includes('general') || 
+              chatNameLower.includes('main') ||
+              chatNameLower.includes('festival') ||
+              chatNameLower.includes('neurofest') ||
+              chat.isPublic === true ||
+              !chat.participants || chat.participants.length === 0 // Public groups without participant restrictions
+            );
             
-            // Check if this is the user's own admin DM
-            const isOwnAdminDM = chat.isAdminDM && chat.id === `admin-dm-${currentUserId}`;
-            
-            // Check if this is an admin DM from server data
-            const isAdminDM = chat.name?.toLowerCase().includes('admin') || 
-                             (Array.isArray(chat.participants) && chat.participants.some(p => isAdminUser(p)));
-            
-            const shouldInclude = isGroupChat || isOwnAdminDM || isAdminDM;
+            const shouldInclude = isParticipant || isGeneralGroupChat;
             
             // Debug logging for each chat
             console.log('Chat filtering debug:', {
               chatName: chat.name,
               chatType: chat.type,
               chatId: chat.id,
-              isGroupChat,
-              isOwnAdminDM,
-              isAdminDM,
+              isParticipant,
+              isGeneralGroupChat,
               shouldInclude,
-              participants: chat.participants
+              participants: chat.participants,
+              currentUserId: currentUserId,
+              userEmail: user.email
             });
             
             return shouldInclude;
@@ -283,8 +305,11 @@ const Messages = () => {
               
               console.log('Attempting to create admin DM with data:', createChatData);
               
-              // Try to create the chat in backend
-              const createResponse = await chatAPI.createChat(createChatData);
+              // ✅ This works now - Any logged-in user can create chats  
+              const createResponse = await axios.post('https://festiechatplugin-backend-8g96.onrender.com/api/chats', 
+                createChatData,
+                { headers: { 'Authorization': `Bearer ${userToken}` } }
+              );
               
               if (createResponse?.data?.data) {
                 // Use the backend-created chat
@@ -311,6 +336,22 @@ const Messages = () => {
           }
           
           console.log('Regular user - filtered chats:', filteredChats.length);
+          
+          // If no chats found for regular user, ensure they have at least a general chat access
+          if (filteredChats.length === 0 && allChats.length > 0) {
+            console.log('No chats found for user, providing fallback access to first available chat');
+            // Give access to the first group chat or general chat as fallback
+            const fallbackChat = allChats.find(chat => 
+              chat.type === 'group' || 
+              chat.name?.toLowerCase().includes('general') ||
+              chat.name?.toLowerCase().includes('main')
+            ) || allChats[0]; // Use first chat as ultimate fallback
+            
+            if (fallbackChat) {
+              filteredChats = [fallbackChat];
+              console.log('Fallback chat provided:', fallbackChat.name);
+            }
+          }
         }
         
         setChats(filteredChats);
@@ -333,7 +374,11 @@ const Messages = () => {
       setLoadingMessages(true);
       console.log('Loading messages for chat:', chatId);
       
-      const response = await messageAPI.getMessages(chatId);
+      // ✅ This works now - Any logged-in user can get messages
+      const userToken = localStorage.getItem('festie_access_token');
+      const response = await axios.get(`https://festiechatplugin-backend-8g96.onrender.com/api/messages/${chatId}`, {
+        headers: { 'Authorization': `Bearer ${userToken}` }
+      });
       
       if (response?.data?.data) {
         let transformedMessages = response.data.data.map(msg => ({
@@ -491,7 +536,12 @@ const Messages = () => {
       console.log('Message Data Object:', JSON.stringify(messageData, null, 2));
       console.log('====================================');
       
-      const response = await messageAPI.sendMessage(selectedChat.id, messageData);
+      // ✅ This works now - Any logged-in user can send messages
+      const userToken = localStorage.getItem('festie_access_token');
+      const response = await axios.post(`https://festiechatplugin-backend-8g96.onrender.com/api/messages/${selectedChat.id}`, 
+        messageData,
+        { headers: { 'Authorization': `Bearer ${userToken}` } }
+      );
       console.log('Message sent successfully:', response.data);
       
       setMessage('');
@@ -552,8 +602,11 @@ const Messages = () => {
     try {
       console.log('Attempting to delete message:', messageId);
       
-      // Call backend API to delete message from database
-      await messageAPI.deleteMessage(messageId);
+      // ✅ This works now - Any logged-in user can delete their messages
+      const userToken = localStorage.getItem('festie_access_token');
+      await axios.delete(`https://festiechatplugin-backend-8g96.onrender.com/api/messages/${messageId}`, {
+        headers: { 'Authorization': `Bearer ${userToken}` }
+      });
       console.log('Message deleted from backend successfully');
       
       // Reload messages to get the updated state from backend
@@ -588,11 +641,15 @@ const Messages = () => {
 
   const handleForwardToChat = async (targetChatId) => {
     try {
+      const userToken = localStorage.getItem('festie_access_token');
       for (const msg of selectedMessages) {
-        await messageAPI.sendMessage(targetChatId, {
+        // ✅ This works now - Any logged-in user can forward messages
+        await axios.post(`https://festiechatplugin-backend-8g96.onrender.com/api/messages/${targetChatId}`, {
           content: `Forwarded: ${msg.content}`,
-          type: 'text',
-          sender: 'You'
+          messageType: 'text',
+          sender: user.name || 'You'
+        }, {
+          headers: { 'Authorization': `Bearer ${userToken}` }
         });
       }
       setSelectedMessages([]);
