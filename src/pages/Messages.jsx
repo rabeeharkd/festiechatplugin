@@ -152,6 +152,7 @@ const Messages = () => {
   const [showJoinChatModal, setShowJoinChatModal] = useState(false);
   const [showBulkCreateModal, setShowBulkCreateModal] = useState(false);
   const [joinChatId, setJoinChatId] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
   const [activeUserCount, setActiveUserCount] = useState(0);
   const [isUserAdmin, setIsUserAdmin] = useState(false);
   
@@ -725,7 +726,71 @@ const Messages = () => {
     }
   };
 
-  // Handler to join existing chat from DB
+  // New endpoint for your dialog - Join by name
+  const joinByName = async (chatName) => {
+    try {
+      console.log('Attempting to join chat by name:', chatName);
+      const userToken = localStorage.getItem('festie_access_token');
+      const response = await axios.post(
+        'https://festiechatplugin-backend-8g96.onrender.com/api/chats/join-by-name',
+        { chatName },
+        { headers: { 'Authorization': `Bearer ${userToken}` } }
+      );
+      
+      // Success: "Successfully joined 'Festival Main Chat'!"
+      console.log(response.data.message);
+      
+      // Close modal and reset state
+      setShowJoinChatModal(false);
+      setJoinChatId('');
+      setSearchResults([]);
+      
+      // Reload chats to show the newly joined chat
+      await loadChats();
+      
+      // Show success message to user
+      alert(`Successfully joined '${chatName}'!`);
+      
+    } catch (error) {
+      console.error('Error joining chat by name:', error);
+      if (error.response?.status === 400) {
+        alert('You are already a member of this chat or the chat does not exist.');
+      } else if (error.response?.status === 404) {
+        alert('Chat not found with that name.');
+      } else if (error.response?.status === 403) {
+        alert('Access denied. You may not have permission to join this chat.');
+      } else {
+        alert(`Failed to join chat: ${error.response?.data?.message || error.message}`);
+      }
+    }
+  };
+
+  // Search for suggestions
+  const searchChats = async (query) => {
+    try {
+      if (!query.trim()) {
+        setSearchResults([]);
+        return [];
+      }
+      
+      const userToken = localStorage.getItem('festie_access_token');
+      const response = await axios.get(
+        `https://festiechatplugin-backend-8g96.onrender.com/api/chats/search-by-name?q=${encodeURIComponent(query)}`,
+        { headers: { 'Authorization': `Bearer ${userToken}` } }
+      );
+      
+      const results = response.data.data || []; // Array of matching chats
+      setSearchResults(results);
+      return results;
+      
+    } catch (error) {
+      console.error('Error searching chats:', error);
+      setSearchResults([]);
+      return [];
+    }
+  };
+
+  // Handler to join existing chat from DB (by ID - legacy support)
   const joinChat = async (chatId) => {
     try {
       console.log('Attempting to join chat:', chatId);
@@ -742,6 +807,7 @@ const Messages = () => {
       // Close modal and reset state
       setShowJoinChatModal(false);
       setJoinChatId('');
+      setSearchResults([]);
       
       // Reload chats to show the newly joined chat
       await loadChats();
@@ -1091,27 +1157,96 @@ const Messages = () => {
       {/* Join Chat Modal */}
       {showJoinChatModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 max-w-full">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-full max-h-[80vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4">Join Existing Chat</h3>
-            <p className="text-sm text-gray-600 mb-4">Enter the Chat ID to join an existing chat:</p>
             
-            <input
-              type="text"
-              value={joinChatId}
-              onChange={(e) => setJoinChatId(e.target.value)}
-              placeholder="Enter Chat ID (e.g., 60f7b3b3b3b3b3b3b3b3b3b3)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent mb-4"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && joinChatId.trim()) {
-                  joinChat(joinChatId.trim());
-                }
-              }}
-            />
+            {/* Search by Name - Primary Method */}
+            <div className="mb-6">
+              <p className="text-sm text-gray-600 mb-2">Search and join by chat name:</p>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <input
+                  type="text"
+                  value={joinChatId}
+                  onChange={(e) => {
+                    setJoinChatId(e.target.value);
+                    // Real-time search as user types
+                    if (e.target.value.trim()) {
+                      searchChats(e.target.value.trim());
+                    } else {
+                      setSearchResults([]);
+                    }
+                  }}
+                  placeholder="Type chat name (e.g., Festival Main Chat)"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && joinChatId.trim()) {
+                      // Try to join by name first
+                      joinByName(joinChatId.trim());
+                    }
+                  }}
+                />
+              </div>
+              
+              {/* Search Results */}
+              {searchResults.length > 0 && (
+                <div className="mt-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg">
+                  <p className="text-xs text-gray-500 p-2 bg-gray-50">Found {searchResults.length} chat(s):</p>
+                  {searchResults.map((chat) => (
+                    <button
+                      key={chat._id || chat.id}
+                      onClick={() => joinByName(chat.name)}
+                      className="w-full p-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 flex items-center space-x-3"
+                    >
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                        <Users className="w-4 h-4 text-green-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900">{chat.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {chat.type === 'group' ? 'Group Chat' : 'Direct Message'} • 
+                          {chat.participants?.length || 0} members
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              
+              {joinChatId.trim() && searchResults.length === 0 && (
+                <div className="mt-2 p-2 text-xs text-gray-500 bg-gray-50 rounded border">
+                  No chats found matching "{joinChatId}". Try a different search term.
+                </div>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="relative mb-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Or join by Chat ID</span>
+              </div>
+            </div>
+            
+            {/* Join by ID - Fallback Method */}
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="Enter Chat ID (e.g., 60f7b3b3b3b3b3b3b3b3b3b3)"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.target.value.trim()) {
+                    joinChat(e.target.value.trim());
+                  }
+                }}
+              />
+            </div>
             
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
               <p className="text-xs text-blue-700">
-                💡 <strong>Tip:</strong> Ask a chat member or admin to share the Chat ID with you. 
-                It's usually found in the chat settings or URL.
+                💡 <strong>Tip:</strong> Search by chat name is easier! Just start typing and select from suggestions.
               </p>
             </div>
             
@@ -1120,6 +1255,7 @@ const Messages = () => {
                 onClick={() => {
                   setShowJoinChatModal(false);
                   setJoinChatId('');
+                  setSearchResults([]);
                 }}
                 className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
@@ -1128,13 +1264,14 @@ const Messages = () => {
               <button
                 onClick={() => {
                   if (joinChatId.trim()) {
-                    joinChat(joinChatId.trim());
+                    // Try name-based join first
+                    joinByName(joinChatId.trim());
                   }
                 }}
                 disabled={!joinChatId.trim()}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Join Chat
+                Join by Name
               </button>
             </div>
           </div>
