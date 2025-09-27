@@ -275,6 +275,17 @@ const Messages = () => {
         setIsUserAdmin(adminStatus);
         console.log('Admin status (for UI features only):', adminStatus);
         
+        // Special debugging for rabeehsp@gmail.com admin access
+        if (user?.email === 'rabeehsp@gmail.com') {
+          console.log('🔍 DEBUGGING RABEEHSP@GMAIL.COM ADMIN ACCESS:');
+          console.log('- User Object:', user);
+          console.log('- Is Admin (Frontend):', adminStatus);
+          console.log('- API Response Data:', response?.data);
+          console.log('- Raw Chats from Backend:', allChats);
+          console.log('- Backend Response Status:', response?.status);
+          console.log('- Access Token Available:', !!localStorage.getItem('festie_access_token'));
+        }
+        
         // 🚀 NO FILTERING - Everyone sees everything!
         const filteredChats = allChats.map(chat => ({
           ...chat,
@@ -478,6 +489,76 @@ const Messages = () => {
     console.log('🔍 SHOWING ALL CONSOLE MESSAGES (including extension errors)');
     // This would restore original console methods if we wanted to implement it
     return 'All console messages will now be visible';
+  };
+
+  // Debug function to check why rabeehsp@gmail.com can't see chats (call from browser console: window.debugAdminAccess())
+  window.debugAdminAccess = async () => {
+    console.log('🔍 DEBUGGING ADMIN ACCESS FOR RABEEHSP@GMAIL.COM');
+    console.log('Current user:', user);
+    console.log('Is admin (frontend):', isAdminUser(user));
+    
+    const userToken = localStorage.getItem('festie_access_token');
+    console.log('Access token available:', !!userToken);
+    
+    if (!userToken) {
+      console.log('❌ NO ACCESS TOKEN - User needs to login');
+      return { error: 'No access token' };
+    }
+    
+    try {
+      // Test direct API call
+      console.log('🔄 Testing direct API call to /api/chats...');
+      const response = await axios.get(
+        'https://festiechatplugin-backend-8g96.onrender.com/api/chats',
+        { 
+          headers: { 'Authorization': `Bearer ${userToken}` },
+          timeout: 10000 
+        }
+      );
+      
+      console.log('✅ API Response Status:', response.status);
+      console.log('✅ API Response Data:', response.data);
+      console.log('✅ Chats Count:', response.data?.data?.length || 0);
+      
+      if (response.data?.data?.length === 0) {
+        console.log('💡 DATABASE IS EMPTY - No chats exist yet');
+        console.log('🎯 Solution: Create some chats using admin buttons or backend');
+        return { 
+          success: true, 
+          chatCount: 0, 
+          message: 'Database is empty - create chats first' 
+        };
+      } else {
+        console.log('📋 Available chats:');
+        response.data.data.forEach((chat, index) => {
+          console.log(`  ${index + 1}. ${chat.name} (${chat.type}) - ID: ${chat._id}`);
+        });
+        return { 
+          success: true, 
+          chatCount: response.data.data.length, 
+          chats: response.data.data 
+        };
+      }
+      
+    } catch (error) {
+      console.log('❌ API ERROR:', error);
+      console.log('Status:', error.response?.status);
+      console.log('Message:', error.response?.data?.message || error.message);
+      
+      if (error.response?.status === 401) {
+        console.log('💡 TOKEN IS INVALID - Need to login again');
+      } else if (error.response?.status === 403) {
+        console.log('💡 BACKEND PERMISSION ISSUE - Admin not recognized by backend');
+      } else if (error.response?.status === 500) {
+        console.log('💡 BACKEND ERROR - Check backend logs');
+      }
+      
+      return { 
+        error: true, 
+        status: error.response?.status, 
+        message: error.message 
+      };
+    }
   };
 
   // Debug function to test search functionality (call from browser console: window.testSearch())
@@ -1148,6 +1229,21 @@ const Messages = () => {
               </button>
             </p>
           </div>
+
+          {/* Special Debug Banner for rabeehsp@gmail.com */}
+          {user?.email === 'rabeehsp@gmail.com' && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 mb-2">
+              <p className="text-xs text-yellow-700 font-medium">
+                🔧 ADMIN DEBUG: rabeehsp@gmail.com - Troubleshoot chat access
+                <button
+                  onClick={() => window.debugAdminAccess()}
+                  className="ml-2 text-yellow-600 hover:text-yellow-800 underline text-xs"
+                >
+                  Debug Access
+                </button>
+              </p>
+            </div>
+          )}
 
           {/* Development Mode Indicator */}
           {import.meta.env.DEV && (

@@ -90,9 +90,9 @@ const Login = () => {
           onClick={toggleMode}
           className="text-blue-600 hover:underline text-sm"
         >
-          {isRegisterMode 
-            ? 'Already have an account? Login' 
-            : "Don't have an account? Register"}
+          {/* {isRegisterMode 
+            // ? 'Already have an account? Login' 
+            // : "Don't have an account? Register"} */}
         </button>
       </div>
       <div className="mt-2 text-center text-sm text-gray-600">
