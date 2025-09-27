@@ -344,4 +344,4 @@ export const mockAPI = {
 };
 
 // Toggle between mock and real API
-export const USE_MOCK_API = true;
+export const USE_MOCK_API = false;
