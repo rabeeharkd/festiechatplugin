@@ -150,6 +150,7 @@ const Messages = () => {
   const [selectedMessages, setSelectedMessages] = useState([]);
   const [showForwardModal, setShowForwardModal] = useState(false);
   const [showJoinChatModal, setShowJoinChatModal] = useState(false);
+  const [showBulkCreateModal, setShowBulkCreateModal] = useState(false);
   const [joinChatId, setJoinChatId] = useState('');
   const [activeUserCount, setActiveUserCount] = useState(0);
   const [isUserAdmin, setIsUserAdmin] = useState(false);
@@ -663,6 +664,67 @@ const Messages = () => {
     }
   };
 
+  // Bulk create 5 groups
+  const createBulkGroups = async () => {
+    try {
+      const userToken = localStorage.getItem('festie_access_token');
+      const response = await axios.post(
+        'https://festiechatplugin-backend-8g96.onrender.com/api/chats/bulk-create',
+        {
+          count: 5,
+          namePrefix: 'Festival Chat',
+          description: 'Festival discussion group',
+          category: 'general'
+        },
+        { headers: { 'Authorization': `Bearer ${userToken}` } }
+      );
+      
+      console.log('Bulk groups created successfully:', response.data);
+      
+      // Reload chats to show the newly created groups
+      await loadChats();
+      
+      // Success message
+      alert(`Successfully created ${response.data.count || 5} festival chat groups!`);
+      
+    } catch (error) {
+      console.error('Error creating bulk groups:', error);
+      if (error.response?.status === 403) {
+        alert('Admin privileges required to create bulk groups.');
+      } else {
+        alert(`Failed to create bulk groups: ${error.response?.data?.message || error.message}`);
+      }
+    }
+  };
+
+  // Quick create event groups
+  const createEventGroups = async () => {
+    try {
+      const userToken = localStorage.getItem('festie_access_token');
+      const response = await axios.post(
+        'https://festiechatplugin-backend-8g96.onrender.com/api/chats/quick-groups',
+        { preset: 'event' },
+        { headers: { 'Authorization': `Bearer ${userToken}` } }
+      );
+      
+      console.log('Event groups created successfully:', response.data);
+      
+      // Reload chats to show the newly created event groups
+      await loadChats();
+      
+      // Success message
+      alert('Successfully created event groups: Event Planning, Event Updates, Event Social!');
+      
+    } catch (error) {
+      console.error('Error creating event groups:', error);
+      if (error.response?.status === 403) {
+        alert('Admin privileges required to create event groups.');
+      } else {
+        alert(`Failed to create event groups: ${error.response?.data?.message || error.message}`);
+      }
+    }
+  };
+
   // Handler to join existing chat from DB
   const joinChat = async (chatId) => {
     try {
@@ -796,11 +858,24 @@ const Messages = () => {
           {/* Join Chat Button */}
           <button
             onClick={() => setShowJoinChatModal(true)}
-            className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+            className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 mb-2"
           >
             <Users className="h-4 w-4" />
             <span>Join Existing Chat</span>
           </button>
+
+          {/* Admin Only - Bulk Create Options */}
+          {isUserAdmin && (
+            <div className="space-y-2">
+              <button
+                onClick={() => setShowBulkCreateModal(true)}
+                className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2"
+              >
+                <Users className="h-4 w-4" />
+                <span>Admin: Bulk Create</span>
+              </button>
+            </div>
+          )}
 
         </div>
 
@@ -1060,6 +1135,70 @@ const Messages = () => {
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Join Chat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Create Modal */}
+      {showBulkCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-full">
+            <h3 className="text-lg font-semibold mb-4">Admin: Bulk Create Groups</h3>
+            <p className="text-sm text-gray-600 mb-4">Choose how to create multiple chat groups:</p>
+            
+            <div className="space-y-3">
+              {/* Festival Chats Option */}
+              <div className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
+                <h4 className="font-medium text-gray-900 mb-2">Create Festival Chats</h4>
+                <p className="text-sm text-gray-600 mb-3">
+                  Creates 5 numbered festival discussion groups:<br />
+                  "Festival Chat 1", "Festival Chat 2", etc.
+                </p>
+                <button
+                  onClick={() => {
+                    setShowBulkCreateModal(false);
+                    createBulkGroups();
+                  }}
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Create 5 Festival Chats
+                </button>
+              </div>
+
+              {/* Event Groups Option */}
+              <div className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
+                <h4 className="font-medium text-gray-900 mb-2">Create Event Groups</h4>
+                <p className="text-sm text-gray-600 mb-3">
+                  Creates specialized event groups:<br />
+                  "Event Planning", "Event Updates", "Event Social"
+                </p>
+                <button
+                  onClick={() => {
+                    setShowBulkCreateModal(false);
+                    createEventGroups();
+                  }}
+                  className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Create Event Groups
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-4">
+              <p className="text-xs text-amber-700">
+                ⚠️ <strong>Admin Only:</strong> This feature requires admin privileges. 
+                Created groups will be available to all users.
+              </p>
+            </div>
+            
+            <div className="flex justify-end space-x-3 mt-4">
+              <button
+                onClick={() => setShowBulkCreateModal(false)}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
               </button>
             </div>
           </div>
