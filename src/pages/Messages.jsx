@@ -149,6 +149,8 @@ const Messages = () => {
   const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0, messageId: null });
   const [selectedMessages, setSelectedMessages] = useState([]);
   const [showForwardModal, setShowForwardModal] = useState(false);
+  const [showJoinChatModal, setShowJoinChatModal] = useState(false);
+  const [joinChatId, setJoinChatId] = useState('');
   const [activeUserCount, setActiveUserCount] = useState(0);
   const [isUserAdmin, setIsUserAdmin] = useState(false);
   
@@ -661,8 +663,43 @@ const Messages = () => {
     }
   };
 
-  // Handler to add new chats
-
+  // Handler to join existing chat from DB
+  const joinChat = async (chatId) => {
+    try {
+      console.log('Attempting to join chat:', chatId);
+      const userToken = localStorage.getItem('festie_access_token');
+      const response = await axios.post(
+        `https://festiechatplugin-backend-8g96.onrender.com/api/chats/${chatId}/join`,
+        {}, 
+        { headers: { 'Authorization': `Bearer ${userToken}` } }
+      );
+      
+      // Success: User is now in the chat!
+      console.log(response.data.message); // "Successfully joined the chat!"
+      
+      // Close modal and reset state
+      setShowJoinChatModal(false);
+      setJoinChatId('');
+      
+      // Reload chats to show the newly joined chat
+      await loadChats();
+      
+      // Show success message to user
+      alert(`Successfully joined the chat: ${response.data.chat?.name || 'Chat'}`);
+      
+    } catch (error) {
+      console.error('Error joining chat:', error);
+      if (error.response?.status === 400) {
+        alert('You are already a member of this chat or the chat does not exist.');
+      } else if (error.response?.status === 404) {
+        alert('Chat not found.');
+      } else if (error.response?.status === 403) {
+        alert('Access denied. You may not have permission to join this chat.');
+      } else {
+        alert(`Failed to join chat: ${error.response?.data?.message || error.message}`);
+      }
+    }
+  };
 
   // Filter chats based on search
   const filteredChats = useMemo(() => {
@@ -756,6 +793,14 @@ const Messages = () => {
             />
           </div>
           
+          {/* Join Chat Button */}
+          <button
+            onClick={() => setShowJoinChatModal(true)}
+            className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+          >
+            <Users className="h-4 w-4" />
+            <span>Join Existing Chat</span>
+          </button>
 
         </div>
 
@@ -962,6 +1007,59 @@ const Messages = () => {
                 className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Join Chat Modal */}
+      {showJoinChatModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-full">
+            <h3 className="text-lg font-semibold mb-4">Join Existing Chat</h3>
+            <p className="text-sm text-gray-600 mb-4">Enter the Chat ID to join an existing chat:</p>
+            
+            <input
+              type="text"
+              value={joinChatId}
+              onChange={(e) => setJoinChatId(e.target.value)}
+              placeholder="Enter Chat ID (e.g., 60f7b3b3b3b3b3b3b3b3b3b3)"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent mb-4"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && joinChatId.trim()) {
+                  joinChat(joinChatId.trim());
+                }
+              }}
+            />
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <p className="text-xs text-blue-700">
+                💡 <strong>Tip:</strong> Ask a chat member or admin to share the Chat ID with you. 
+                It's usually found in the chat settings or URL.
+              </p>
+            </div>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowJoinChatModal(false);
+                  setJoinChatId('');
+                }}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (joinChatId.trim()) {
+                    joinChat(joinChatId.trim());
+                  }
+                }}
+                disabled={!joinChatId.trim()}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Join Chat
               </button>
             </div>
           </div>
