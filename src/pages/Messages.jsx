@@ -682,17 +682,7 @@ const Messages = () => {
   // Main render
   return (
     <div className="flex h-full bg-white rounded-lg shadow-sm overflow-hidden">
-      {/* API Mode Indicator */}
-      {USE_MOCK_API && (
-        <div className="absolute top-2 right-2 bg-yellow-100 border border-yellow-400 text-yellow-800 px-2 py-1 rounded text-xs z-50">
-          Demo Mode: Mock Chat Data
-        </div>
-      )}
-      {!USE_MOCK_API && (
-        <div className="absolute top-2 right-2 bg-blue-100 border border-blue-400 text-blue-800 px-2 py-1 rounded text-xs z-50">
-          Live Mode: Database Connected
-        </div>
-      )}
+
       
       {/* Chat List */}
       <div className="w-1/3 border-r border-gray-200 flex flex-col">
@@ -757,7 +747,6 @@ const Messages = () => {
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">
                     {selectedChat.name}
-                    {isUserAdmin && <span className="ml-2 text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">Admin</span>}
                   </h3>
                   <p className="text-sm text-green-500 font-medium">
                     {loadingMessages ? (
