@@ -11,6 +11,7 @@ import { USE_MOCK_API } from '../utils/mockAPI';
 const isAdminUser = (user) => {
   return user?.role === 'admin' || 
          user?.email === 'amjedvnml@gmail.com' || 
+         user?.email === 'rabeehsp@gmail.com' || 
          user?.isAdmin === true || 
          user?.userType === 'admin';
 };
@@ -778,6 +779,87 @@ const Messages = () => {
     }
   };
 
+  // Create preset chat (for quick setup)
+  const createPresetChat = async (name, description) => {
+    try {
+      console.log('Creating preset chat:', name);
+      const userToken = localStorage.getItem('festie_access_token');
+      
+      const chatData = {
+        name: name,
+        type: 'group',
+        description: description,
+        category: 'general'
+      };
+      
+      const response = await axios.post(
+        'https://festiechatplugin-backend-8g96.onrender.com/api/chats',
+        chatData,
+        { headers: { 'Authorization': `Bearer ${userToken}` } }
+      );
+      
+      console.log('✅ Preset chat created successfully:', response.data);
+      
+      // Reload chats to show the newly created chat
+      await loadChats();
+      
+      // Success message
+      alert(`✅ Successfully created "${name}"!`);
+      
+    } catch (error) {
+      console.error('Error creating preset chat:', error);
+      if (error.response?.status === 409) {
+        alert(`Chat "${name}" may already exist.`);
+      } else if (error.response?.status === 403) {
+        alert('Admin privileges required to create chats.');
+      } else {
+        alert(`Failed to create "${name}": ${error.response?.data?.message || error.message}`);
+      }
+    }
+  };
+
+  // Quick create a single chat
+  const createSingleChat = async () => {
+    const chatName = prompt('Enter chat name (e.g., "Fansat Arts Fest"):');
+    if (!chatName || !chatName.trim()) return;
+    
+    const chatType = confirm('Click OK for Group Chat, Cancel for Direct Message') ? 'group' : 'dm';
+    
+    try {
+      console.log('Creating single chat:', chatName, 'Type:', chatType);
+      const userToken = localStorage.getItem('festie_access_token');
+      
+      const chatData = {
+        name: chatName.trim(),
+        type: chatType,
+        description: `${chatType === 'group' ? 'Group discussion' : 'Direct message'} - ${chatName}`,
+        category: 'general'
+      };
+      
+      const response = await axios.post(
+        'https://festiechatplugin-backend-8g96.onrender.com/api/chats',
+        chatData,
+        { headers: { 'Authorization': `Bearer ${userToken}` } }
+      );
+      
+      console.log('✅ Chat created successfully:', response.data);
+      
+      // Reload chats to show the newly created chat
+      await loadChats();
+      
+      // Success message
+      alert(`✅ Successfully created "${chatName}" (${chatType})!`);
+      
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      if (error.response?.status === 403) {
+        alert('Admin privileges required to create chats.');
+      } else {
+        alert(`Failed to create chat: ${error.response?.data?.message || error.message}`);
+      }
+    }
+  };
+
   // Quick create event groups
   const createEventGroups = async () => {
     try {
@@ -1111,9 +1193,32 @@ const Messages = () => {
             <span>Join Existing Chat</span>
           </button>
 
-          {/* Admin Only - Bulk Create Options */}
+          {/* Admin Only - Create & Bulk Create Options */}
           {isUserAdmin && (
             <div className="space-y-2">
+              <button
+                onClick={() => createSingleChat()}
+                className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center space-x-2"
+              >
+                <Users className="h-4 w-4" />
+                <span>Quick: Create Chat</span>
+              </button>
+              
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  onClick={() => createPresetChat('Fansat Arts Fest', 'Festival main discussion group')}
+                  className="bg-orange-600 text-white px-2 py-1 rounded text-xs hover:bg-orange-700"
+                >
+                  Arts Fest
+                </button>
+                <button
+                  onClick={() => createPresetChat('General Chat', 'Main community discussion')}
+                  className="bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700"
+                >
+                  General
+                </button>
+              </div>
+              
               <button
                 onClick={() => setShowBulkCreateModal(true)}
                 className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2"
