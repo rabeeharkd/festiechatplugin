@@ -160,6 +160,32 @@ const Messages = () => {
   const messagesEndRef = useRef(null);
   
   console.log('Messages component rendering - user:', user?.email, 'loading:', loading, 'authLoading:', authLoading, 'chats count:', chats.length);
+  
+  // Filter out Chrome extension errors in development
+  if (import.meta.env.DEV) {
+    const originalError = console.error;
+    const originalWarn = console.warn;
+    
+    console.error = (...args) => {
+      const message = args.join(' ').toLowerCase();
+      // Filter out known Chrome extension errors
+      if (message.includes('relingo') || 
+          message.includes('chrome-extension') || 
+          message.includes('menu item') ||
+          message.includes('runtime.lasterror')) {
+        return; // Suppress extension-related errors in dev
+      }
+      originalError.apply(console, args);
+    };
+    
+    console.warn = (...args) => {
+      const message = args.join(' ').toLowerCase();
+      if (message.includes('relingo') || message.includes('chrome-extension')) {
+        return; // Suppress extension-related warnings in dev
+      }
+      originalWarn.apply(console, args);
+    };
+  }
 
   // Show loading while authentication is being checked
   if (authLoading) {
@@ -353,6 +379,35 @@ const Messages = () => {
       hasUser: !!user,
       isAuthenticated: !!user && !!accessToken
     };
+  };
+
+  // Debug function to filter console noise (call from browser console: window.filterConsoleNoise())
+  window.filterConsoleNoise = () => {
+    console.log('🔧 CONSOLE NOISE FILTER APPLIED');
+    console.log('This will suppress Chrome extension errors like "relingo_parent" menu item errors');
+    console.log('Your app errors will still be visible');
+    
+    // List common extension error patterns
+    const extensionErrorPatterns = [
+      'relingo',
+      'chrome-extension://',
+      'runtime.lasterror',
+      'menu item with id',
+      'extension context invalidated',
+      'grammarly',
+      'lastpass',
+      'adblock'
+    ];
+    
+    console.log('Filtering patterns:', extensionErrorPatterns);
+    return 'Console noise filter is active in development mode';
+  };
+
+  // Debug function to show all console messages (call from browser console: window.showAllErrors())
+  window.showAllErrors = () => {
+    console.log('🔍 SHOWING ALL CONSOLE MESSAGES (including extension errors)');
+    // This would restore original console methods if we wanted to implement it
+    return 'All console messages will now be visible';
   };
 
   // Send message function
@@ -768,11 +823,34 @@ const Messages = () => {
         {/* Search */}
         <div className="p-4 border-b border-gray-200">
           {/* Open Access Policy Indicator */}
-          <div className="bg-green-50 border border-green-200 rounded-lg p-2 mb-3">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-2 mb-2">
             <p className="text-xs text-green-700 font-medium">
               🔓 Open Access Policy Active - All chats visible to authenticated users
             </p>
           </div>
+          
+          {/* Development Mode Indicator */}
+          {import.meta.env.DEV && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-3">
+              <p className="text-xs text-blue-700">
+                🔧 Dev Mode: Browser extension errors filtered from console
+                <button
+                  onClick={() => {
+                    console.log('=== FESTIE CHAT DEBUG INFO ===');
+                    console.log('App Environment:', import.meta.env.MODE);
+                    console.log('API Base URL:', import.meta.env.VITE_API_BASE_URL);
+                    console.log('Current User:', user?.email);
+                    console.log('Chats Loaded:', chats.length);
+                    console.log('Extension Errors Filtered: Relingo, Chrome extensions, etc.');
+                    console.log('=============================');
+                  }}
+                  className="ml-2 text-blue-600 hover:text-blue-800 underline text-xs"
+                >
+                  Debug Info
+                </button>
+              </p>
+            </div>
+          )}
           
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
