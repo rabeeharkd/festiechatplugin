@@ -5,7 +5,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import api from "../services/api";
+import api, { apiCall } from "../services/api";
 import { mockAPI, USE_MOCK_API } from "../utils/mockAPI";
 import dbManager from "../utils/database";
 
@@ -86,11 +86,21 @@ export function AuthProvider({ children }) {
         console.log("Using mock API for development");
         response = await mockAPI.login(email, password);
       } else {
-        // Use the configured API instance 
-        response = await api.post('/auth/login', {
-          email,
-          password
+        // Use CORS-enabled fetch function
+        console.log('Using CORS-enabled API call...');
+        const fetchResponse = await apiCall('/api/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({
+            email,
+            password
+          })
         });
+        
+        if (!fetchResponse.ok) {
+          throw new Error(`HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`);
+        }
+        
+        response = { data: await fetchResponse.json() };
       }
 
       if (response.data.success) {
@@ -122,11 +132,22 @@ export function AuthProvider({ children }) {
         console.log("Using mock API for development");
         response = await mockAPI.register(name, email, password);
       } else {
-        response = await api.post('/auth/register', {
-          name: name.trim(),
-          email: email.trim(),
-          password: password,
+        // Use CORS-enabled fetch function
+        console.log('Using CORS-enabled API call for registration...');
+        const fetchResponse = await apiCall('/api/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: name.trim(),
+            email: email.trim(),
+            password: password,
+          })
         });
+        
+        if (!fetchResponse.ok) {
+          throw new Error(`HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`);
+        }
+        
+        response = { data: await fetchResponse.json() };
       }
 
       if (response.data.success) {

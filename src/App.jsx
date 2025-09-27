@@ -5,6 +5,7 @@ import { SidebarProvider, useSidebar } from './contexts/SidebarContext'
 import Sidebar from './components/Sidebar'
 import ConnectionStatus from './components/ConnectionStatus'
 import { runApiTests } from './utils/apiTest'
+import { testCorsApiCall, testCorsLogin } from './utils/corsTest'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import Dashboard from './pages/Dashboard'
@@ -24,6 +25,11 @@ const AppContent = () => {
   React.useEffect(() => {
     console.log('🧪 Running API tests...');
     runApiTests();
+    
+    // Make CORS test functions available globally
+    window.testCorsApiCall = testCorsApiCall;
+    window.testCorsLogin = testCorsLogin;
+    console.log('🔧 CORS test functions available: testCorsApiCall(), testCorsLogin()');
   }, []);
   
   // Show loading spinner while checking auth

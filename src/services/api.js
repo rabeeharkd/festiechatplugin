@@ -2,6 +2,41 @@
 import axios from 'axios';
 import { mockAPI, USE_MOCK_API } from '../utils/mockAPI';
 
+// Temporary CORS-enabled fetch function
+const apiCall = async (endpoint, options = {}) => {
+  const baseURL = 'https://festiechatplugin-backend-8g96.onrender.com';
+  
+  // Try direct call first (in case CORS gets fixed)
+  try {
+    const response = await fetch(`${baseURL}${endpoint}`, {
+      ...options,
+      mode: 'cors',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      }
+    });
+    return response;
+  } catch (error) {
+    console.log('Direct CORS failed, trying proxy...');
+    // If CORS fails, use proxy
+    const proxyURL = 'https://cors-anywhere.herokuapp.com/';
+    const response = await fetch(`${proxyURL}${baseURL}${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        ...options.headers
+      }
+    });
+    return response;
+  }
+};
+
+// Export the CORS-enabled function for use in components
+export { apiCall };
+
 // Create axios instance with base configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://festiechatplugin-backend-8g96.onrender.com';
 const isDevelopment = import.meta.env.DEV;
