@@ -38,7 +38,7 @@ const Login = () => {
   return (
     <div className="w-full max-w-sm bg-white p-8 rounded shadow">
       <h2 className="text-2xl font-bold mb-6 text-center">
-        {isRegisterMode ? 'Festie Admin Register' : 'Festie Admin Login'}
+        {/* {isRegisterMode ? 'Festie Admin Register' : 'Festie Admin Login'} */}
       </h2>
       {USE_MOCK_API && (
         <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-3 mb-4 text-sm">
@@ -52,7 +52,7 @@ const Login = () => {
       )}
       {error && <div className="text-red-500 mb-4 text-sm">{error}</div>}
       <form onSubmit={handleSubmit} className="space-y-4">
-        {isRegisterMode && (
+        {/* {isRegisterMode && (
           <input
             className="w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500"
             type="text"
@@ -61,7 +61,7 @@ const Login = () => {
             onChange={(e) => setName(e.target.value)}
             required
           />
-        )}
+        )} */}
         <input
           className="w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500"
           type="email"
@@ -82,7 +82,7 @@ const Login = () => {
           className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors"
           type="submit"
         >
-          {isRegisterMode ? 'Register' : 'Login'}
+          {/* {isRegisterMode ? 'Register' : 'Login'} */}
         </button>
       </form>
       <div className="mt-4 text-center">
@@ -96,9 +96,9 @@ const Login = () => {
         </button>
       </div>
       <div className="mt-2 text-center text-sm text-gray-600">
-        {isRegisterMode 
+        {/* {isRegisterMode 
           ? 'Create a new admin account' 
-          : 'Admin panel access only'}
+          : 'Admin panel access only'} */}
       </div>
     </div>
   );
